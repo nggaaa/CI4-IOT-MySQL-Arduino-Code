@@ -6,7 +6,7 @@
 
 
 
-// Configuration
+// Configuration Section
 const char* ssid = "SSID";
 const char* pass = "PASS";
 const char* host = "Hostname";
