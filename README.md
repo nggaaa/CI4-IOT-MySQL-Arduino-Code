@@ -1,211 +1,116 @@
 # CI4 Internet Of Things With MySQL Arduino Code
-
 For Server Or Web Code visit this [repository.](https://github.com/saronggos/ci4-iot-mysql)
 
+Im using HTTPS for communication device with server
+
 ### Library 
-- Wifi.h if you using ESP32 or esp8266wifi.h for ESP8266
 - DHT (For Example in send data temperature and humidity to database)
 
-### Explanation
-1. Include Wi-Fi Library. If your board is ESP32, use 
-	```cpp
-    #include <WIFI.h>
-	```
-	and if you using ESP8266, use
-
-	```c++
-	#include <ESP8266WiFi.h>
-	```
-	
-2. Include DHT library (if you using dht for this project)  
-	```cpp
-    #include "DHT.h"
-	```
-	
-3.  Configure Connection
-
-	  ```cpp
-	  const char* ssid     = "[change your ssid]";
-	  const char* password = "[change your password]";
-	  const char* host = "[change to you hostname]";
-	  const int port = 80;  //port default is 80. if you have different port, you can change it
-	  ```
-
-4. Configure DHT pin and type ```DHT11 or DHT22 or DHT21```
-
-   ```cpp 
-   #define DHTPIN 4
-   #define DHTTYPE DHT11
-   DHT dht(DHTPIN, DHTTYPE);
-   ```
-
-5. Set timeout time 
-
-   ```cpp	
-   // Current time
-   unsigned long currentTime = millis();
-   // Previous time
-   unsigned long previousTime = 0; 
-   // Define timeout time in milliseconds (example: 5000ms = 5s)
-   const long timeoutTime = 5000;
-   ```
-
-6. Beginning DHT and connect to access point
-
-   ```cpp
-   void setup() {
-     Serial.begin(115200);
-     dht.begin();
-   
-     // Networking
-     Serial.print("Connecting to ");
-     Serial.println(ssid);
-     WiFi.begin(ssid, password);
-     while (WiFi.status() != WL_CONNECTED) {
-       delay(500);
-       Serial.print(".");
-     }
-     Serial.println("");
-     Serial.println("WiFi connected.");
-     Serial.println("IP address: ");
-     Serial.println(WiFi.localIP());
-   }
-   ```
-
-7. Connect to hostname
-
-   ```cpp
-   WiFiClient client;
-     
-     if (!client.connect(host, port)) {
-       Serial.println("Connection failed");
-       return;
-     }
-   ```
-
-8. Get temperature and humidity from DHT sensor
-
-   ```cpp
-   float temp = dht.readTemperature(false);
-   float humid = dht.readHumidity();
-   ```
-
-9. Make get request and configure api-key
-
-   ```cpp
-   String apiUrl = "/hardware?";
-     apiUrl += "api=5299d80c61ee33e5fb5b8a193fae1798d7ffb248";
-     apiUrl += "&key=9b37226a1880b64a98df56c0d30056f0";
-     apiUrl += "&temp="+String(temp);
-     apiUrl += "&hum="+String(humid);
-     
-   
-     // Set header Request
-     client.print(String("GET ") + apiUrl + " HTTP/1.1\r\n" +
-                  "Host: " + host + "\r\n" +
-                  "Connection: close\r\n\r\n");
-   ```
-
-10. Stop system when disconnect from server
-
-    ```cpp
-      unsigned long timeout = millis();
-      while (client.available() == 0) {
-        if (millis() - timeout > 3000) {
-          Serial.println(">>> Client Timeout !");
-          Serial.println(">>> Operation failed !");
-          client.stop();
-          return;
-        }
-      }
-    ```
-
-11. Read response from server
-
-    ```cpp
-    while (client.available()) {
-        String line = client.readStringUntil('\r');
-        Serial.println(line);
-      }
-    ```
-
-12. Delay for next submit
-
-    ```cpp
-    delay(60000);
-    ```
-
-### Full Source Code
+### Full Source ESP8266
 
 ```cpp
-#include <WiFi.h>
+#include <ESP8266WiFi.h>
+#include <ESP8266WiFiMulti.h>
+#include <ESP8266HTTPClient.h>
+#include <WiFiClientSecureBearSSL.h>
 #include "DHT.h"
 
-const char* ssid     = "SSID";
-const char* password = "password";
-const char* host = "hostname";
-const int port = 80;
 
-#define DHTPIN 4
+
+// Configuration
+const char* ssid = "Dlovecollection blok 9";
+const char* pass = "Islamhargamati";
+const char* host = "https://saronggos-iot.000webhostapp.com";
+
+String api = "7e9c973ae0bb37f3c3d7d91845b0b63fed9c9598";
+String key = "34126de04c4d107221df8a23e2be2467";
+
+#define DHTPIN 0
 #define DHTTYPE DHT11
+
+// Fingerprint for demo URL, expires on June 2, 2021, needs to be updated well before this date
+const uint8_t fingerprint[20] = {0x5b, 0xfb, 0xd1, 0xd4, 0x49, 0xd3, 0x0f, 0xa9, 0xc6, 0x40, 0x03, 0x34, 0xba, 0xe0, 0x24, 0x05, 0xaa, 0xd2, 0xe2, 0x01};
+
+
+ESP8266WiFiMulti WiFiMulti;
 DHT dht(DHTPIN, DHTTYPE);
-
-unsigned long currentTime = millis();
-unsigned long previousTime = 0; 
-const long timeoutTime = 5000;
-
 void setup() {
+
   Serial.begin(115200);
-  dht.begin();
+  // Serial.setDebugOutput(true);
 
+  Serial.println();
+  Serial.println();
+  Serial.println();
 
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
+  for (uint8_t t = 4; t > 0; t--) {
+    Serial.printf("[SETUP] WAIT %d...\n", t);
+    Serial.flush();
+    delay(1000);
   }
-  Serial.println("");
-  Serial.println("WiFi connected.");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
+
+  WiFi.mode(WIFI_STA);
+  WiFiMulti.addAP("Dlovecollection blok 9", "Islamhargamati");
 }
 
-void loop(){
-  WiFiClient client;
-  
-  if (!client.connect(host, port)) {
-    Serial.println("Connection failed");
+void loop() {
+    // wait for WiFi connection
+  if ((WiFiMulti.run() == WL_CONNECTED)) {
+
+    std::unique_ptr<BearSSL::WiFiClientSecure>client(new BearSSL::WiFiClientSecure);
+
+    client->setFingerprint(fingerprint);
+    // Or, if you happy to ignore the SSL certificate, then use the following line instead:
+    // client->setInsecure();
+
+    HTTPClient https;
+
+    Serial.print("[HTTPS] begin...\n");
+
+    // DHT Read
+    float temp = dht.readTemperature();
+    float hum = dht.readHumidity();
+
+    if (isnan(temp) || isnan(hum)) {
+    Serial.println("Failed to read from DHT sensor!");
     return;
   }
+    
+    String apiUrl = host;
+    apiUrl += "/hardware?";
+    apiUrl += "api=" + api;
+    apiUrl += "&key=" + key;
+    apiUrl += "&temp=" + String(temp);
+    apiUrl += "&hum=" + String(hum);
 
-  float temp = dht.readTemperature(false);
-  float humid = dht.readHumidity();
+    if (https.begin(*client, apiUrl)) {  // HTTPS
 
-  String apiUrl = "/hardware?";
-  apiUrl += "api=5299d80c61ee33e5fb5b8a193fae1798d7ffb248";
-  apiUrl += "&key=9b37226a1880b64a98df56c0d30056f0";
-  apiUrl += "&temp="+String(temp);
-  apiUrl += "&hum="+String(humid);
+      Serial.print("[HTTPS] GET...\n");
+      // start connection and send HTTP header
+      int httpCode = https.GET();
 
-  client.print(String("GET ") + apiUrl + " HTTP/1.1\r\n" +
-               "Host: " + host + "\r\n" +
-               "Connection: close\r\n\r\n");
-  unsigned long timeout = millis();
-  while (client.available() == 0) {
-    if (millis() - timeout > 3000) {
-      Serial.println(">>> Client Timeout !");
-      Serial.println(">>> Operation failed !");
-      client.stop();
-      return;
+      // httpCode will be negative on error
+      if (httpCode > 0) {
+        // HTTP header has been send and Server response header has been handled
+        Serial.printf("[HTTPS] GET... code: %d\n", httpCode);
+
+        // file found at server
+        if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
+          String payload = https.getString();
+          Serial.println(payload);
+        }
+      } else {
+        Serial.printf("[HTTPS] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
+      }
+
+      https.end();
+    } else {
+      Serial.printf("[HTTPS] Unable to connect\n");
     }
   }
-  while (client.available()) {
-    String line = client.readStringUntil('\r');
-    Serial.println(line);
-  }
-   delay(60000);
+
+  Serial.println("Wait 1h before next round...");
+  delay(3600000);
 }
 ```
 
